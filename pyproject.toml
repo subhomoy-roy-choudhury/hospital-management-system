@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "hospital-management-system"
+version = "0.1.0"
+description = ""
+authors = ["Subhomoy Roy Choudhury"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "main"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+django-restframework = "^0.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
