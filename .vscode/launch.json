@@ -12,17 +12,34 @@
             "env": {
                 "DEBUG": "1",
                 "SQL_HOST": "localhost",
-                "REDIS_DB_HOST": "localhost",
-                "SQL_DATABASE": "local-db"
+                "SQL_DATABASE": "db"
             },
             "program": "${workspaceFolder}/main/manage.py",
             "args": [
                 "runserver",
-                "8000",
+                "8001",
                 "--noreload"
             ],
             "django": true,
             "justMyCode": false
-        }
+        },
+        {
+            "name": "Python: Execute Commands",
+            "type": "debugpy",
+            "request": "launch",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "SQL_HOST": "localhost",
+                "REDIS_DB_HOST": "localhost",
+            },
+            "program": "${workspaceFolder}/main/manage.py",
+            "args": [
+                // "makemigrations",
+                "migrate",
+                // "createsuperuser"
+            ],
+            "django": true,
+            "justMyCode": false
+        },
     ]
 }
