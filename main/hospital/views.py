@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from django.forms.models import model_to_dict
 from django.db import IntegrityError
 from django.db.models import Q
+from rest_framework.pagination import LimitOffsetPagination
 
 from .models import (
     Department,
@@ -21,6 +22,7 @@ from .enum import DayOfWeek
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
+    pagination_class = LimitOffsetPagination
     lookup_field = "slug"
 
     def get_queryset(self):
@@ -35,7 +37,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class DoctorAPIView(APIView):
+class DoctorAPIView(APIView, LimitOffsetPagination):
     def post(self, request, *args, **kwargs):
         try:
             payload = request.data
@@ -95,12 +97,7 @@ class DoctorAPIView(APIView):
                     {"error": "No Doctor matches the given slug."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            doctor.update(
-                name=payload["name"],
-                specialization=payload["specialization"],
-                contact_information=payload["contact_information"],
-                department_id=payload["department"],
-            )
+            doctor.update(**payload)
 
             # Delete all Doctor Availability
             DoctorAvailability.objects.filter(doctor_id=doctor[0].id).delete()
@@ -175,11 +172,15 @@ class DoctorAPIView(APIView):
         if specialization:
             queryset = queryset.filter(specialization=specialization)
 
-        # Serialize the data
-        serializer = DoctorSerializer(queryset, many=True)
+        # Paginate the queryset before serialization
+        paginator = LimitOffsetPagination()
+        result_page = paginator.paginate_queryset(queryset, request, view=self)
 
-        # Return the serialized data as a JSON response
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Serialize the paginated data
+        serializer = DoctorSerializer(result_page, many=True)
+
+        # Return the paginated response
+        return paginator.get_paginated_response(serializer.data)
 
 
 class PatientAPIView(APIView):
@@ -223,6 +224,9 @@ class PatientAPIView(APIView):
             slug = kwargs.get("slug")
             payload = request.data
             medical_history = payload.pop("medical_history", None)
+            assigned_doctor = payload.pop("assigned_doctor", None)
+            if assigned_doctor:
+                payload["doctor_id"] = assigned_doctor
 
             # Update Patient
             patient = Patient.objects.filter(slug=slug)
@@ -231,19 +235,11 @@ class PatientAPIView(APIView):
                     {"error": "No Patient matches the given slug."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            patient.update(
-                name=payload["name"],
-                age=payload["age"],
-                gender=payload["gender"],
-                contact_information=payload["contact_information"],
-                doctor_id=payload["assigned_doctor"],
-            )
+            patient.update(**payload)
             # Update Medical History Entry
             if medical_history:
                 MedicalHistory.objects.filter(patient_id=patient[0].id).update(
-                    previous_diagnoses=medical_history["previous_diagnoses"],
-                    allergies=medical_history["allergies"],
-                    medications=medical_history["medications"],
+                    **medical_history
                 )
             return Response(
                 {"message": "Patient Updated Successfully"},
@@ -285,11 +281,15 @@ class PatientAPIView(APIView):
         if search:
             queryset = queryset.filter(name__icontains=search)
 
-        # Serialize the data
-        serializer = PatientSerializer(queryset, many=True)
+        # Paginate the queryset before serialization
+        paginator = LimitOffsetPagination()
+        result_page = paginator.paginate_queryset(queryset, request, view=self)
 
-        # Return the serialized data as a JSON response
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        # Serialize the paginated data
+        serializer = PatientSerializer(result_page, many=True)
+
+        # Return the paginated response
+        return paginator.get_paginated_response(serializer.data)
 
 
 class DoctorAppointmentAPIView(APIView):
