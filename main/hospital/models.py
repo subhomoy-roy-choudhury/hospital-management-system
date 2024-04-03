@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
 from django.core.validators import RegexValidator
-from .constants import DAY_CHOICES, GENDER_CHOICES
+from .enum import DayOfWeek, Gender
 
 # Phone Number Regex
 phone_regex = RegexValidator(
@@ -42,7 +42,7 @@ class Doctor(models.Model):
 
 
 class DoctorAvailability(models.Model):
-    day = models.IntegerField(choices=DAY_CHOICES)
+    day = models.IntegerField(choices=DayOfWeek.choices())
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
@@ -56,7 +56,7 @@ class Patient(models.Model):
     name = models.CharField(max_length=255, db_index=True)
     slug = models.SlugField(null=True, unique=True, db_index=True)
     age = models.PositiveIntegerField()
-    gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
+    gender = models.CharField(max_length=1, choices=Gender.choices())
     contact_information = models.CharField(validators=[phone_regex], max_length=255)
 
     def __str__(self):
