@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.forms.models import model_to_dict
 from django.db import IntegrityError
+from django.db.models import Q
 
 from .models import (
     Department,
@@ -26,8 +27,11 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         """Filter using slug"""
         queryset = Department.objects.all()
         slug = self.request.query_params.get("slug", None)
+        search = self.request.query_params.get("search", None)
         if slug is not None:
             queryset = queryset.filter(slug=slug)
+        elif search is not None:
+            queryset = queryset.filter(Q(name__icontains=search))
         return queryset
 
 
@@ -155,15 +159,24 @@ class DoctorAPIView(APIView):
             )
 
     def get(self, request, *args, **kwargs):
-        # Fetch data from the database
-        slug = kwargs.get("slug", None)
+        # Initialize the base queryset
+        queryset = Doctor.objects.all()
+
+        # Get query params
+        slug = kwargs.get("slug")
+        search = request.GET.get("search")
+        specialization = request.GET.get("specialization")
+
+        # Apply filters based on query params
         if slug:
-            data = Doctor.objects.filter(slug=slug)
-        else:
-            data = Doctor.objects.all()
+            queryset = queryset.filter(slug=slug)
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        if specialization:
+            queryset = queryset.filter(specialization=specialization)
 
         # Serialize the data
-        serializer = DoctorSerializer(data, many=True)
+        serializer = DoctorSerializer(queryset, many=True)
 
         # Return the serialized data as a JSON response
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -263,15 +276,17 @@ class PatientAPIView(APIView):
             )
 
     def get(self, request, *args, **kwargs):
+        queryset = Patient.objects.all()
         # Fetch data from the database
         slug = kwargs.get("slug", None)
+        search = request.GET.get("search", None)
         if slug:
-            data = Patient.objects.filter(slug=slug)
-        else:
-            data = Patient.objects.all()
+            queryset = queryset.filter(slug=slug)
+        if search:
+            queryset = queryset.filter(name__icontains=search)
 
         # Serialize the data
-        serializer = PatientSerializer(data, many=True)
+        serializer = PatientSerializer(queryset, many=True)
 
         # Return the serialized data as a JSON response
         return Response(serializer.data, status=status.HTTP_200_OK)
