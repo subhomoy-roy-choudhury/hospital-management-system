@@ -9,9 +9,21 @@ phone_regex = RegexValidator(
     message="Phone number must be entered in a valid format. Up to 15 digits allowed.",
 )
 
+class BaseModel(models.Model):
+    """
+    Base Class field added as abstraction class.
+    those default field abstract all other needed class
+    created_at, updated_at entry datetime
+    """
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
 
 # Create your models here.
-class Department(models.Model):
+class Department(BaseModel):
     name = models.CharField(max_length=100, unique=True, db_index=True)
     services_offered = models.TextField()
     slug = models.SlugField(null=True, unique=True, db_index=True)
@@ -25,7 +37,7 @@ class Department(models.Model):
         super().save(*args, **kwargs)
 
 
-class Doctor(models.Model):
+class Doctor(BaseModel):
     name = models.CharField(max_length=255, db_index=True)
     slug = models.SlugField(null=True, unique=True, db_index=True)
     specialization = models.CharField(max_length=100)
@@ -41,7 +53,7 @@ class Doctor(models.Model):
         super().save(*args, **kwargs)
 
 
-class DoctorAvailability(models.Model):
+class DoctorAvailability(BaseModel):
     day = models.IntegerField(choices=DayOfWeek.choices())
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     start_time = models.DateTimeField()
@@ -52,12 +64,13 @@ class DoctorAvailability(models.Model):
         return f"{self.doctor.name} available on {day_string} from {self.start_time} to {self.end_time}"
 
 
-class Patient(models.Model):
+class Patient(BaseModel):
     name = models.CharField(max_length=255, db_index=True)
     slug = models.SlugField(null=True, unique=True, db_index=True)
     age = models.PositiveIntegerField()
     gender = models.CharField(max_length=1, choices=Gender.choices())
     contact_information = models.CharField(validators=[phone_regex], max_length=255)
+    doctor = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
         return self.name
@@ -67,8 +80,7 @@ class Patient(models.Model):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
-
-class MedicalHistory(models.Model):
+class MedicalHistory(BaseModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
     previous_diagnoses = models.TextField()
     allergies = models.TextField()
@@ -78,9 +90,8 @@ class MedicalHistory(models.Model):
         return f"Medical History of {self.patient.name}"
 
 
-class Appointment(models.Model):
+class Appointment(BaseModel):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
-    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
     date = models.DateTimeField()
     details = models.TextField()
 

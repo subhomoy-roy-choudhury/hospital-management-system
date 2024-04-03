@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.forms.models import model_to_dict
 from .models import (
     Department,
     Patient,
@@ -25,6 +26,7 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
 class DoctorSerializer(serializers.ModelSerializer):
     department_details = DepartmentSerializer(source="department", read_only=True)
     availability = serializers.SerializerMethodField()
+    assigned_patients = serializers.SerializerMethodField()
 
     class Meta:
         model = Doctor
@@ -34,6 +36,7 @@ class DoctorSerializer(serializers.ModelSerializer):
             "contact_information",
             "department_details",
             "availability",
+            "assigned_patients",
         ]
 
     def get_availability(self, obj):
@@ -48,6 +51,12 @@ class DoctorSerializer(serializers.ModelSerializer):
             }
             for availability in availabilities_data
         }
+
+    def get_assigned_patients(self, obj):
+        assigned_patients = Patient.objects.filter(doctor=obj)
+        return [
+            model_to_dict(assigned_patient) for assigned_patient in assigned_patients
+        ]
 
 
 class MedicalHistorySerializer(serializers.ModelSerializer):
@@ -66,6 +75,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 class PatientSerializer(serializers.ModelSerializer):
     medical_history = serializers.SerializerMethodField()
     appointments = serializers.SerializerMethodField()
+    doctor = serializers.SerializerMethodField()
 
     class Meta:
         model = Patient
@@ -76,6 +86,7 @@ class PatientSerializer(serializers.ModelSerializer):
             "contact_information",
             "medical_history",
             "appointments",
+            "doctor",
         ]
 
     def get_medical_history(self, obj):
@@ -87,3 +98,6 @@ class PatientSerializer(serializers.ModelSerializer):
         appointments = Appointment.objects.filter(patient=obj)
         appointments_serializer = AppointmentSerializer(appointments, many=True)
         return appointments_serializer.data
+
+    def get_doctor(self, obj):
+        return model_to_dict(obj.doctor)

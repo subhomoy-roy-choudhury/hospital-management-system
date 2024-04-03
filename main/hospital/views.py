@@ -1,4 +1,4 @@
-# Create your views here.
+from datetime import datetime
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -86,6 +86,11 @@ class DoctorAPIView(APIView):
 
             # Update Doctor Entry
             doctor = Doctor.objects.filter(slug=slug)
+            if len(doctor) == 0:
+                return Response(
+                    {"error": "No Doctor matches the given slug."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             doctor.update(
                 name=payload["name"],
                 specialization=payload["specialization"],
@@ -133,7 +138,7 @@ class DoctorAPIView(APIView):
                 doctor = Doctor.objects.get(slug=slug)
             except Doctor.DoesNotExist:
                 return Response(
-                    {"error": "No Doctor matches the given query."},
+                    {"error": "No Doctor matches the given slug."},
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
@@ -176,6 +181,7 @@ class PatientAPIView(APIView):
                     age=payload["age"],
                     gender=payload["gender"],
                     contact_information=payload["contact_information"],
+                    doctor_id=payload["assigned_doctor"],
                 )
             except IntegrityError:
                 return Response(
@@ -209,13 +215,15 @@ class PatientAPIView(APIView):
             patient = Patient.objects.filter(slug=slug)
             if len(patient) == 0:
                 return Response(
-                    {"error": "No Patient matches the given slug."}, status=status.HTTP_400_BAD_REQUEST
+                    {"error": "No Patient matches the given slug."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
             patient.update(
                 name=payload["name"],
                 age=payload["age"],
                 gender=payload["gender"],
                 contact_information=payload["contact_information"],
+                doctor_id=payload["assigned_doctor"],
             )
             # Update Medical History Entry
             if medical_history:
@@ -267,3 +275,34 @@ class PatientAPIView(APIView):
 
         # Return the serialized data as a JSON response
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class DoctorAppointmentAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        try:
+            slug = kwargs.get("patient_slug", None)
+            payload = request.data
+            # Current time
+            appointment_date = datetime.strptime(
+                payload["date"], "%Y-%m-%d %H:%M:%S.%f"
+            )
+            day_of_week = appointment_date.weekday()
+
+            # Fetch Patient
+            patient = Patient.objects.get(slug=slug)
+            doctor_availability = DoctorAvailability.objects.filter(
+                doctor_id=patient.doctor, day=day_of_week
+            )
+
+            if len(doctor_availability) > 0:
+                Appointment.objects.create(
+                    patient=patient, date=payload["date"], details=payload["details"]
+                )
+            return Response(
+                {"message": "Appointment Created Successfullly"},
+                status=status.HTTP_201_CREATED,
+            )
+        except Exception as error:
+            return Response(
+                {"error": "Something went wrong"}, status=status.HTTP_400_BAD_REQUEST
+            )
