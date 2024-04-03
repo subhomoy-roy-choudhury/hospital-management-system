@@ -16,13 +16,7 @@ Follow these steps to get your development environment set up:
      ```
    - Modify the `.env` file as needed to match your local environment.
 
-2. **Install Dependencies**:
-   - Run Poetry to install the necessary dependencies.
-     ```bash
-     poetry install
-     ```
-
-3. **Build and Run**:
+2. **Build and Run**:
    - Use the provided Makefile to build and start the application.
      ```bash
      make
